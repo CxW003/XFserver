@@ -23,8 +23,8 @@ urlpatterns = [
     # Uncomment the next line to enable the admin:
     url(r'^admin/', admin.site.urls),
     url(r'^index/$',dapp.views.hello),
-    url(r'^baidu/$',dapp.views.baidu),
     url(r'^consult/([a-z]*)/$',dapp.views.consult),
     url(r'^register/(.*)/$',dapp.views.register),
     url(r'^connectiontest/$',dapp.views.connectiontest),
+    url(r'^mission/(.*)/$',dapp.views.opreate),
 ]
