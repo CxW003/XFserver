@@ -27,4 +27,6 @@ urlpatterns = [
     url(r'^register/(.*)/$',dapp.views.register),
     url(r'^connectiontest/$',dapp.views.connectiontest),
     url(r'^mission/(.*)/$',dapp.views.opreate),
+    url(r'^ifexist/(.*)/$',dapp.views.ifexist),
+    url(r'^login/(.*)/$',dapp.views.login),
 ]

@@ -38,6 +38,21 @@ def register(request,offset):
     regi = dapp.models.Accounts.objects.create(name = name, passwd = passwd)
     return  HttpResponse('rsuccess')
 
+def login(request,offset):
+    name,passwd = offset.split(",")
+    cons = dapp.models.Accounts.objects.get(name = name)
+    if cons.id > 1 and cons.passwd == passwd:
+        return HttpResponse("lsuccess")
+    else :
+        return HttpResponse("lfailed")
+
+def ifexist(request,offset):
+    cons = dapp.models.Accounts.objects.get(name = offset)
+    if cons.id > 0:
+        return HttpResponse ("uexist")
+    else:
+        return HttpResponse("unexist")
+
 def connectiontest(request):
     return  HttpResponse("csuccess")
 
