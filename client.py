@@ -3,51 +3,36 @@
 import urllib
 import http.client
 import clientlib.lib
+import sys
 
+address = "192.168.0.111:9576"
 if __name__ == "__main__":
-    uname = "";passwd="";requrl=""
-    conn = http.client.HTTPConnection("192.168.0.111:9576")
-    if clientlib.lib.getres(conn,clientlib.lib.testurl) != "csuccess":
+    requrl=""; uname='';passwd=''
+    conn = http.client.HTTPConnection(address)
+    if clientlib.lib.getres(conn,clientlib.lib.testurl) != b'csuccess':
+        print(clientlib.lib.getres(conn,clientlib.lib.testurl))
         print("Failed to connect server,the program will exit")
         exit(1)
-    print("This is a single test of my server.\n Input'1'to login,'2' to register and '0' to exit\n")
-    i = input()
-    if i == 1:
-        print ("Please input your username\n")
-        uname = input()
-        requrl = "/ifexist/" + uname + "/"
-        if clientlib.lib.getres(conn,requrl) == "uexist" :
-            print("Please input your password\n")
-            passwd = input()
-            requrl = "/login/" + uname + "," + passwd + "/"
-            if clientlib.lib.getres(conn,requrl) == "lsuccess":
-                print ("Welcome "+uname+" \n")
-                print ("Input '1' to check all your missions,'2' to create a new mission,'0' to exit\n")
-            else :
-                print("Invalid password ,program will exit now\n")
-                exit(1)
-        else:
-            print("Username doesn't exist, you may register first ,program will exit now\n")
-            exit(1)
-    elif i == 2 :
-        print ("Please input the username\n")
-        uname = input()
-        requrl = "/ifexist/" + uname + "/"
-        if clientlib.lib.getres(conn,requrl) != "uexist" :
-            passwdflag = 1
-            while passwdflag :
-                print("Please input your password\n")
-                passwd = input()
-                print("Please input your password again\n")
-                passwdagain = input()
-                if passwd != passwdagain :
-                    print("The passwords you input are not the same\n")
-                else:
-                    passwdflag = 0
-            requrl = "/register/" + uname + ','+ passwd + '/'
-            if clientlib.lib.getres(conn,requrl) == "rsuccess":
-                print("Registration succeed.Welcome " + uname +"\n")
-        else:
-            print ("Username exist,please use another one\n")
+    uname,passwd = clientlib.lib.login(conn).split(",")
+    print("Input '1'to change your password\nInput '2' to do sth about your missions data\nInput '0' tp exit\n")
+    i=input()
+    while i:
+        if i == '1':
+            print("Now input your new password\n")
+            newpasswd=input()
+            print("Now input your new password again\n")
+            newpasswdagain=input()
+            if newpasswd == newpasswdagain :
+                clientlib.lib.changepasswd(uname,newpasswd)
+                passwd = newpasswd
+            else:
+                print("It seems different from the first time,R U serious?\n")
+        if i == '2':
+            print("Input'1' to create a mission,'2' to delete a mission,'3' to alter a mission '4' to consult all your mission")
+            print(",'0' to exit\n")
+            if clientlib.lib.opreate(conn,uname,passwd) :
+                sys.exit(0)
+        i=input()
+    sys.exit(0)
 
 
