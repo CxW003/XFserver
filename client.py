@@ -23,7 +23,7 @@ if __name__ == "__main__":
             print("Now input your new password again\n")
             newpasswdagain=input()
             if newpasswd == newpasswdagain :
-                clientlib.lib.changepasswd(uname,newpasswd)
+                clientlib.lib.changepasswd(conn,uname,passwd,newpasswd)
                 passwd = newpasswd
             else:
                 print("It seems different from the first time,R U serious?\n")
