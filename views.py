@@ -65,12 +65,20 @@ def opreate(request,offset):
             dapp.models.Missions.objects.create(ownerid=user.id, type=type, name=name, score=score, period=period)
             return HttpResponse("csuccess")
         if order == "delete" :
-            dapp.models.Missions.objects.filter(id=data).delete()
-            return HttpResponse("dsuccess")
+            cons = dapp.models.Missions.objects.filter(id=data)
+            if cons.ownerid == user.id:
+                cons.delete()
+                return HttpResponse("dsuccess")
+            else:
+                return HttpResponse("Mission not found")
         if order == "alter" :
             Mid,type,name,score,period = data.split("_")
-            dapp.models.Missions.objects.filter(id=Mid).update(type=type, name=name, score=score, period=period)
-            return HttpResponse("asuccess")
+            cons = dapp.models.Missions.objects.get(id=Mid)
+            if cons.ownerid == user.id:
+                cons.update(type=type, name=name, score=score, period=period)
+                return HttpResponse("asuccess")
+            else:
+                return HttpResponse("Mission not found")
         if order == "consult" :
              if data == "all" :
                 cons = dapp.models.Missions.objects.filter(ownerid=user.id)
@@ -83,3 +91,11 @@ def opreate(request,offset):
     else:
         return  HttpResponse("Invalid identity")
 
+def changepasswd(request,offset):
+    user,oldpasswd,newpasswd = offset.split(",")
+    cons = dapp.models.Accounts.objects.get(name = user)
+    if cons.passwd == oldpasswd :
+        cons.update(passwd = newpasswd)
+        return  HttpResponse("csuccess")
+    else :
+        return  HttpResponse("R U kidding me?How can u set your new password without the old one")
