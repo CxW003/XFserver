@@ -2,16 +2,9 @@ from django.shortcuts import render
 
 # Create your views here.
 from django.http import HttpResponse
-from django.shortcuts import render_to_response
 import dapp.models
-
-
-def hello(request):
-    html = """<html> <head>  <title>简单的html示例</title> <bgsound src="../music/bendif.mid"> </head>  
-    <body background="../img/bg.jpg"> <center> 
-     <h3>我的第一个网页</h3> <hr/> 
-     <font size=2>  这是我做的第一个网页，欢迎光临！谢谢！ This is my first web. Welcome. </font> </center> </body> </html>"""
-    return HttpResponse(html)
+import random
+import hashlib
 
 
 def consult(request,offset):
@@ -33,47 +26,79 @@ def consult(request,offset):
         return HttpResponse(resp)
     return HttpResponse('error:no such command')
 
+
 def register(request,offset):
     name,passwd = offset.split(",")
-    regi = dapp.models.Accounts.objects.create(name = name, passwd = passwd)
-    return  HttpResponse('rsuccess')
+    if dapp.models.Accounts.objects.filter(name = name).exists()==False:
+        regi = dapp.models.Accounts.objects.create(name = name, passwd = passwd)
+        random.seed()
+        randstr = name + str(random.randrange(0, 9999))
+        cookie = hashlib.md5(randstr.encode()).hexdigest()
+        # cookie.update(byte(str(time.time()), encoding='utf-8'))
+        dapp.models.Sessions.objects.create(userid=regi.id,cookie=cookie)
+        return  HttpResponse(cookie)
+    else:
+        return HttpResponse("rfailed")
+
 
 def login(request,offset):
     name,passwd = offset.split(",")
-    cons = dapp.models.Accounts.objects.get(name = name)
-    if cons.id > 1 and cons.passwd == passwd:
-        return HttpResponse("lsuccess")
+    cons = dapp.models.Accounts.objects.filter(name = name)
+    if cons.exists()==True:
+        cons = dapp.models.Accounts.objects.get(name = name)
+        if cons.passwd == passwd:
+            flag = True
+            while flag:
+                random.seed()
+                randstr = name + str(random.randrange(0,9999))
+                cookie = hashlib.md5(randstr.encode()).hexdigest()
+                # cookie.update(byte(str(time.time()), encoding='utf-8'))
+                # cookie = cookie.hexdigest()
+                ses = dapp.models.Sessions.objects.filter(cookie = cookie)
+                if ses.exists()==False:
+                    flag = False
+                    if dapp.models.Sessions.objects.filter(userid = cons.id).exists():
+                        cons = dapp.models.Sessions.objects.get(userid=cons.id)
+                        cons.cookie = cookie
+                        cons.save()
+                    else:
+                        dapp.models.Sessions.objects.create(userid=cons.id,cookie=cookie)
+                    return HttpResponse(cookie)
     else :
         return HttpResponse("lfailed")
 
+
 def ifexist(request,offset):
-    cons = dapp.models.Accounts.objects.get(name = offset)
-    if cons.id > 0:
-        return HttpResponse ("uexist")
+    cons = dapp.models.Accounts.objects.filter(name = offset)
+    if cons.exists():
+        return HttpResponse ('uexist')
     else:
-        return HttpResponse("unexist")
+        return HttpResponse("notexist")
+
 
 def connectiontest(request):
     return  HttpResponse("csuccess")
 
+
 def opreate(request,offset):
-    name,passwd,order,data = offset.split(",")
-    user = dapp.models.Accounts.objects.get(name = name)
-    if user.id > 0 and user.passwd == passwd:
+    cookie,order,data = offset.split(",")
+    user = dapp.models.Sessions.objects.filter(cookie = cookie)
+    if user != []:
+        user = dapp.models.Accounts.objects.get(id = user[0].ownerid)
         if order == "create" :
             type,name,score,period = data.split("_")
             dapp.models.Missions.objects.create(ownerid=user.id, type=type, name=name, score=score, period=period)
             return HttpResponse("csuccess")
         if order == "delete" :
             cons = dapp.models.Missions.objects.filter(id=data)
-            if cons.ownerid == user.id:
+            if cons[1].ownerid == user.id:
                 cons.delete()
                 return HttpResponse("dsuccess")
             else:
                 return HttpResponse("Mission not found")
         if order == "alter" :
             Mid,type,name,score,period = data.split("_")
-            cons = dapp.models.Missions.objects.get(id=Mid)
+            cons = dapp.models.Missions.objects.filter(id=Mid)
             if cons.ownerid == user.id:
                 cons.update(type=type, name=name, score=score, period=period)
                 return HttpResponse("asuccess")
@@ -87,15 +112,17 @@ def opreate(request,offset):
                     res += str(line.id) + ',' + line.type + ',' +line.name +','+str(line.score)+','+str(line.period)+','
                 res += "`"
                 return  HttpResponse(res)
-
     else:
         return  HttpResponse("Invalid identity")
 
+
 def changepasswd(request,offset):
-    user,oldpasswd,newpasswd = offset.split(",")
-    cons = dapp.models.Accounts.objects.get(name = user)
-    if cons.passwd == oldpasswd :
-        cons.update(passwd = newpasswd)
+    cookie,newpasswd = offset.split(",")
+    cons = dapp.models.Sessions.objects.filter(cookie = cookie)
+    if cons.exists():
+        acc = dapp.models.Sessions.objects.get(cookie = cookie)
+        acc = dapp.models.Accounts.objects.get(id = acc.userid)
+        acc.update(passwd = newpasswd)
         return  HttpResponse("csuccess")
     else :
-        return  HttpResponse("R U kidding me?How can u set your new password without the old one")
+        return  HttpResponse("Invalid identity")
