@@ -1,18 +1,20 @@
 import sys
-
+import http.client
 testurl = "/connectiontest/"
 
 
 
 def getres(conn,requrl): #This means get response
+    print(requrl)
     conn.request(method="GET", url=requrl)
     response = conn.getresponse()
     return response.read()
 
 
 def login(conn):
-    uname = ''
-    passwd = ''
+    global uname
+    global passwd
+    global resp
     print("This is a single client of my server.\n Input'1'to login,'2' to register and '0' to exit\n")
     i = input()
     print(i)
@@ -25,7 +27,8 @@ def login(conn):
             passwd = input()
             print("your pw is" + passwd)
             requrl = "/login/" + uname + "," + passwd + "/"
-            if getres(conn, requrl) == b"lsuccess":
+            resp = getres(conn, requrl)
+            if  resp != b"lfailed":
                 print("Welcome " + uname + " \n")
                 # print("Input '1' to check all your missions,'2' to create a new mission,'0' to exit\n")
             else:
@@ -50,54 +53,54 @@ def login(conn):
                 else:
                     passwdflag = 0
             requrl = "/register/" + uname + ',' + passwd + '/'
-            if (conn, requrl) == b"rsuccess":
+            resp = getres(conn, requrl)
+            if  resp != b"rfailed":
                 print("Registration succeed.Welcome " + uname + "\n")
         else:
             print("Username exist,please use another one\n")
             login(conn)
     if i == '0':
         sys.exit(0)
-    print("your pw is"+passwd)
-    return uname+","+passwd
+    return resp.decode('utf-8')
 
 
-def changepasswd(conn,user,oldpasswd,newpasswd):
-    url = "/changepasswd/" + user + "," + oldpasswd + "," + newpasswd+ "/"
+def changepasswd(conn,cookie,newpasswd):
+    url = "/changepasswd/" + cookie + "," + newpasswd+ "/"
     getres(conn,url)
 
 
-def createmission(conn,username,passwd,data):
-    url = "/mission/" + username + ',' + passwd + ',create,' + data + '/'
+def createmission(conn,cookie,data):
+    url = "/mission/" + cookie + ',create,' + data + '/'
     getres(conn,url)
 
 
-def deletemission(conn, username, passwd, data):
-    url = "/mission/" + username + ',' + passwd + ',delete,' + data + '/'
+def deletemission(conn, cookie, data):
+    url = "/mission/" +cookie + ',delete,' + data + '/'
     getres(conn, url)
 
 
-def altermission(conn, username, passwd, data):
-    url = "/mission/" + username + ',' + passwd + ',alter,' + data + '/'
+def altermission(conn, cookie, data):
+    url = "/mission/" + cookie + ',alter,' + data + '/'
     getres(conn, url)
 
 
-def consultmission(conn, username, passwd):
-    url = "/mission/" + username + ',' + passwd + ',consult,all' + '/'
+def consultmission(conn, cookie):
+    url = "/mission/" + cookie + ',consult,all' + '/'
     print(getres(conn, url))
 
 
-def opreate(conn,username,passwd):
+def opreate(conn,cookie):
     i=input()
     print("Please input data,the format was given in Readme.txt\n")
     data = input()
     if i == '1':
-        createmission(conn,username,passwd,data)
+        createmission(conn,cookie,data)
     if i == '2':
-        deletemission(conn,username,passwd,data)
+        deletemission(conn,cookie,data)
     if i == '3':
-        altermission(conn,username,passwd,data)
+        altermission(conn,cookie,data)
     if i == '4':
-        consultmission(conn,username,passwd)
+        consultmission(conn,cookie)
     if i == '0':
         return True
     return False
