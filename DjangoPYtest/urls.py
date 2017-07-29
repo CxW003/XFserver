@@ -28,5 +28,6 @@ urlpatterns = [
     url(r'^mission/(.*)/$',dapp.views.opreate),
     url(r'^ifexist/(.*)/$',dapp.views.ifexist),
     url(r'^login/(.*)/$',dapp.views.login),
-    url(r'^changepasswd/(.*)/$',dapp.views.changepasswd)
+    url(r'^changepasswd/(.*)/$',dapp.views.changepasswd),
+    url(r'^libquery/$',dapp.views.libquery),
 ]

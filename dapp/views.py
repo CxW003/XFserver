@@ -1,4 +1,8 @@
 from django.shortcuts import render
+from dapp.lib import lib
+import re
+import http.cookiejar
+from django.views.decorators.csrf import csrf_exempt
 
 # Create your views here.
 from django.http import HttpResponse
@@ -126,3 +130,23 @@ def changepasswd(request,offset):
         return  HttpResponse("csuccess")
     else :
         return  HttpResponse("Invalid identity")
+
+@csrf_exempt
+def libquery(request):
+    if request.method != 'POST':
+        return
+    code = request.POST.get('code')
+    pin = request.POST.get('pin')
+    values = {'code':code, 'pin':pin}
+    requrl = 'http://202.117.24.14/patroninfo~S3*chx/1177297/items'
+    cookie = http.cookiejar.MozillaCookieJar('cookie.txt')
+    jsonarray = []
+    html,cookie = lib.login(cookie,values,requrl)
+    html = html.decode('utf-8')
+    #已借阅书目分析
+    if re.search('未找到借书',html) == None:
+        jsonarray = lib.analyse(html)
+        html = lib.renew(cookie, requrl)
+    else:
+        return HttpResponse('未找到借书')
+    return HttpResponse(jsonarray)
