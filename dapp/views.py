@@ -1,14 +1,21 @@
 from django.shortcuts import render
 from dapp.lib import lib
 import re
-import http.cookiejar
+from http import cookiejar
 from django.views.decorators.csrf import csrf_exempt
-
-# Create your views here.
 from django.http import HttpResponse
+from django import http
 import dapp.models
 import random
 import hashlib
+import time
+# Create your views here.
+
+global PrimesRepo
+global PrimesInitFlag
+PrimesInitFlag =0
+global KeysUpdateCounter
+global PubKeys, PriKeys
 
 
 def consult(request,offset):
@@ -133,20 +140,78 @@ def changepasswd(request,offset):
 
 @csrf_exempt
 def libquery(request):
+    global PrimesInitFlag
+    if PrimesInitFlag !=1:
+        return http.HttpResponseForbidden()
     if request.method != 'POST':
-        return
+        return http.HttpResponseBadRequest('POST')
+    mode = request.POST.get('mode')
     code = request.POST.get('code')
     pin = request.POST.get('pin')
+    pin = lib.decrypt(pin,PriKeys)
+    print(pin)
     values = {'code':code, 'pin':pin}
     requrl = 'http://202.117.24.14/patroninfo~S3*chx/1177297/items'
-    cookie = http.cookiejar.MozillaCookieJar('cookie.txt')
+    cookie = cookiejar.CookieJar()
     jsonarray = []
     html,cookie = lib.login(cookie,values,requrl)
     html = html.decode('utf-8')
     #已借阅书目分析
     if re.search('未找到借书',html) == None:
-        jsonarray = lib.analyse(html)
-        html = lib.renew(cookie, requrl)
+        if mode == 'query':
+            return HttpResponse('可以查询')
+        else:
+            jsonarray = lib.analyse(html)
     else:
         return HttpResponse('未找到借书')
-    return HttpResponse(jsonarray)
+    response = HttpResponse(jsonarray)
+    response['content-type'] = 'application/json'
+    return response
+
+
+@csrf_exempt
+def librenew(request):
+    global PrimesInitFlag
+    if PrimesInitFlag !=1:
+        return http.HttpResponseForbidden()
+    if request.method != 'POST':
+        return http.HttpResponseBadRequest('POST')
+    code = request.POST.get('code')
+    pin = request.POST.get('pin')
+    pin = lib.decrypt(pin,PriKeys)
+    values = {'code':code, 'pin':pin}
+    requrl = 'http://202.117.24.14/patroninfo~S3*chx/1177297/items'
+    cookie = cookiejar.CookieJar()
+    html,cookie = lib.renew(cookie,values,requrl)
+    if re.search('<h2>并非所有的续借成功。详见下文。</h2></div>',html) != None:
+        cons = re.search('</h2><ul><li>([\s\S]*)</ul><div id="renewfailmsg" style="display:none"\s\sclass="errormessage">',html)
+        if cons != None:
+            cons = cons.group(1)
+            cons = re.sub('<.*?>','',cons)
+            return HttpResponse(cons)
+        else:
+            return HttpResponse('发生了意料之外的错误\n')
+    else:
+        return HttpResponse('续借成功？')
+
+
+def getpubkeys(request):
+    global PrimesRepo
+    global PrimesInitFlag
+    global KeysUpdateCounter
+    global PubKeys, PriKeys
+    if PrimesInitFlag !=1:
+        PrimesRepo = []
+        file = open('keys.txt', 'r')
+        PrimesRepo = file.readlines()[0].split(' ')
+        n, e, d = lib.CREATE_KEYS(PrimesRepo)
+        KeysUpdateCounter = time.time()
+        PubKeys = str(n) + ',' + str(e)
+        PriKeys = [n, d]
+        file.close()
+        PrimesInitFlag =1
+    elif time.time() - KeysUpdateCounter >= 7200:
+        n, e, d = lib.CREATE_KEYS(PrimesRepo)
+        PubKeys = str(n) + ',' + str(e)
+        PriKeys = [n, d]
+    return HttpResponse(PubKeys)

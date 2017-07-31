@@ -1,6 +1,7 @@
 import urllib.parse
 import urllib.request
 import http.cookiejar
+import random
 import re
 
 
@@ -76,13 +77,11 @@ def analyse(html):
                 'callnumber':callnumber[i]}
         jsonarray.append(info)
         i += 1
-    # print(jsonarray)
-    file = open('jsonout.txt', 'w+')
-    file.write(str(jsonarray))
-    file.close()
     return jsonarray
 
-def renew(cookie,requrl):
+
+def renew(cookie,values,requrl):
+    html,cookie = login(cookie,values,requrl)
     # 全部续借1
     data1={'requestRenewAll':'requestRenewAll'}
     postvisit(cookie,data1,requrl)
@@ -90,11 +89,46 @@ def renew(cookie,requrl):
     data2 = {'renewall':'是'}
     html = postvisit(cookie,data2,requrl)
     html = html.decode('utf-8')
-    if re.search('<h2>并非所有的续借成功。详见下文。</h2></div>',html) != None:
-        cons = re.search('</h2><ul><li>([\s\S]*)</ul><div id="renewfailmsg" style="display:none"  class="errormessage">',html)
-        if cons != None:
-            cons = cons.group(0)
-            cons = re.sub('<.*>','',cons)
-        else:
-            return ('发生了意料之外的错误\n')
-    return html
+    return html,cookie
+
+
+def CREATE_KEYS(primesrepo):
+    random.seed()
+    p = int(primesrepo[random.randrange(0,len(primesrepo)-1,1)])
+    q = int(primesrepo[random.randrange(0,len(primesrepo)-1,1)])
+    e = int(primesrepo[random.randrange(0,len(primesrepo)-1,1)])
+    n = p * q
+    m = (p - 1) * (q - 1)
+    print(p,q,e,n,m)
+    # 欧几里得求逆元法，逆元含义：若ax≡1 mod f, 则称a关于模f的乘法逆元为x。
+    x1 = 1
+    x2 = 0
+    x3 = m
+    y1 = 0
+    y2 = 1
+    y3 = e
+    while y3 != 1:
+        if y3 == 0:
+            return 0, 0, 0  # e没有逆元
+        q = int(x3 / y3)  # 整除
+        t1 = x1 - q * y1
+        t2 = x2 - q * y2
+        t3 = x3 - q * y3
+        x1 = y1
+        x2 = y2
+        x3 = y3
+        y1 = t1
+        y2 = t2
+        y3 = t3
+        d = y2 % m
+    return n, e, d
+
+
+def decrypt(pin,keys):
+    n, d = keys
+    pinlist = pin.split(',')
+    pin = ''
+    for number in pinlist:
+        char = chr(pow(int(number), d, n))
+        pin += char
+    return pin

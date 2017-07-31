@@ -30,4 +30,6 @@ urlpatterns = [
     url(r'^login/(.*)/$',dapp.views.login),
     url(r'^changepasswd/(.*)/$',dapp.views.changepasswd),
     url(r'^libquery/$',dapp.views.libquery),
+    url(r'^librenew/$',dapp.views.librenew),
+    url(r'^getpubkeys/$',dapp.views.getpubkeys),
 ]
