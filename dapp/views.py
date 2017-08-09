@@ -9,13 +9,9 @@ import dapp.models
 import random
 import hashlib
 import time
+import rsa
+import base64
 # Create your views here.
-
-global PrimesRepo
-global PrimesInitFlag
-PrimesInitFlag =0
-global KeysUpdateCounter
-global PubKeys, PriKeys
 
 
 def consult(request,offset):
@@ -140,16 +136,24 @@ def changepasswd(request,offset):
 
 @csrf_exempt
 def libquery(request):
-    global PrimesInitFlag
-    if PrimesInitFlag !=1:
-        return http.HttpResponseForbidden()
     if request.method != 'POST':
         return http.HttpResponseBadRequest('POST')
-    mode = request.POST.get('mode')
+    file = open('keys.txt','r')
+    file.readline()
+    file.readline()
+    prikey = file.readline()
+    file.close()
+    n,e,d,p,q, = prikey[11:-1].split(', ')
+    prikey = rsa.PrivateKey(int(n),int(e),int(d),int(p),int(q))
     code = request.POST.get('code')
     pin = request.POST.get('pin')
-    pin = lib.decrypt(pin,PriKeys)
-    print(pin)
+    # print(pin)
+    # print(type(pin))
+    pin = base64.standard_b64decode(pin)
+    # print(pin)
+    # print(type(pin))
+    pin = rsa.decrypt(pin, prikey).decode('utf-8')
+    # print(pin)
     values = {'code':code, 'pin':pin}
     requrl = 'http://202.117.24.14/patroninfo~S3*chx/1177297/items'
     cookie = cookiejar.CookieJar()
@@ -158,12 +162,10 @@ def libquery(request):
     html = html.decode('utf-8')
     #已借阅书目分析
     if re.search('未找到借书',html) == None:
-        if mode == 'query':
-            return HttpResponse('可以查询')
-        else:
-            jsonarray = lib.analyse(html)
+        jsonarray = lib.analyse(html)
     else:
-        return HttpResponse('未找到借书')
+        json = {'error':'未找到借书记录'}
+        jsonarray.append(json)
     response = HttpResponse(jsonarray)
     response['content-type'] = 'application/json'
     return response
@@ -171,14 +173,19 @@ def libquery(request):
 
 @csrf_exempt
 def librenew(request):
-    global PrimesInitFlag
-    if PrimesInitFlag !=1:
-        return http.HttpResponseForbidden()
     if request.method != 'POST':
         return http.HttpResponseBadRequest('POST')
+    file = open('keys.txt','r')
+    file.readline()
+    file.readline()
+    prikey = file.readline()
+    file.close()
+    n,e,d,p,q, = prikey[11:-1].split(', ')
+    prikey = rsa.PrivateKey(n,e,d,p,q)
     code = request.POST.get('code')
     pin = request.POST.get('pin')
-    pin = lib.decrypt(pin,PriKeys)
+    pin = base64.standard_b64decode(pin)
+    pin = rsa.decrypt(pin, prikey).decode('utf-8')
     values = {'code':code, 'pin':pin}
     requrl = 'http://202.117.24.14/patroninfo~S3*chx/1177297/items'
     cookie = cookiejar.CookieJar()
@@ -196,22 +203,18 @@ def librenew(request):
 
 
 def getpubkeys(request):
-    global PrimesRepo
-    global PrimesInitFlag
-    global KeysUpdateCounter
-    global PubKeys, PriKeys
-    if PrimesInitFlag !=1:
-        PrimesRepo = []
-        file = open('keys.txt', 'r')
-        PrimesRepo = file.readlines()[0].split(' ')
-        n, e, d = lib.CREATE_KEYS(PrimesRepo)
-        KeysUpdateCounter = time.time()
-        PubKeys = str(n) + ',' + str(e)
-        PriKeys = [n, d]
+    file = open('keys.txt','r+')
+    lasttime = file.readline()
+    timenow = time.time()
+    if timenow - int(lasttime[0:-1]) >=1800:
         file.close()
-        PrimesInitFlag =1
-    elif time.time() - KeysUpdateCounter >= 7200:
-        n, e, d = lib.CREATE_KEYS(PrimesRepo)
-        PubKeys = str(n) + ',' + str(e)
-        PriKeys = [n, d]
-    return HttpResponse(PubKeys)
+        file = open('keys.txt','w')
+        pubkey, prikey = rsa.newkeys(512)
+        lasttime = int(timenow)
+        file.writelines(str(lasttime) + '\n' + str(pubkey) + '\n' + str(prikey))
+        file.close()
+    else:
+        pubkey = file.readline()
+    print(pubkey)
+    response = HttpResponse(pubkey)
+    return response

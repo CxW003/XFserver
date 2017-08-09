@@ -22,3 +22,4 @@ class Missions (models.Model):
 class Sessions (models.Model):
     userid = models.IntegerField(default = 0)
     cookie = models.CharField(unique=True,max_length=129)
+
