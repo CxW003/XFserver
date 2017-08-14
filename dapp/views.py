@@ -12,7 +12,8 @@ import time
 import rsa
 import base64
 # Create your views here.
-
+global iffirsttime
+iffirsttime = 1
 
 def consult(request,offset):
     cons = dapp.models.Accounts.objects.all()
@@ -136,23 +137,26 @@ def changepasswd(request,offset):
 
 @csrf_exempt
 def libquery(request):
+    global pubkey, prikey
+    print(pubkey,prikey)
     if request.method != 'POST':
-        return http.HttpResponseBadRequest('POST')
-    file = open('keys.txt','r')
-    file.readline()
-    file.readline()
-    prikey = file.readline()
-    file.close()
-    n,e,d,p,q, = prikey[11:-1].split(', ')
-    prikey = rsa.PrivateKey(int(n),int(e),int(d),int(p),int(q))
-    code = request.POST.get('code')
-    pin = request.POST.get('pin')
+        return http.HttpResponseNotAllowed('POST')
+    try:
+        code = request.POST.get('code')
+        pin = request.POST.get('pin')
     # print(pin)
     # print(type(pin))
-    pin = base64.standard_b64decode(pin)
+        pin = base64.standard_b64decode(pin)
     # print(pin)
     # print(type(pin))
-    pin = rsa.decrypt(pin, prikey).decode('utf-8')
+        print(pin)
+        pin = rsa.decrypt(pin, prikey).decode('utf-8')
+    except:
+        jsonarray = [{'error': '错误的加密'}]
+        return http.HttpResponse(jsonarray)
+    if code.isdigit() != True or pin.isalnum() != True:
+        jsonarray = [{'error': '帐号不存在'}]
+        return http.HttpResponse(jsonarray)
     # print(pin)
     values = {'code':code, 'pin':pin}
     requrl = 'http://202.117.24.14/patroninfo~S3*chx/1177297/items'
@@ -163,29 +167,30 @@ def libquery(request):
     #已借阅书目分析
     if re.search('未找到借书',html) == None:
         jsonarray = lib.analyse(html)
+        response = HttpResponse(jsonarray)
     else:
         json = {'error':'未找到借书记录'}
         jsonarray.append(json)
-    response = HttpResponse(jsonarray)
+        response = http.HttpResponseNotFound(jsonarray)
     response['content-type'] = 'application/json'
     return response
 
 
 @csrf_exempt
 def librenew(request):
+    global pubkey, prikey
+    print(pubkey, prikey)
     if request.method != 'POST':
-        return http.HttpResponseBadRequest('POST')
-    file = open('keys.txt','r')
-    file.readline()
-    file.readline()
-    prikey = file.readline()
-    file.close()
-    n,e,d,p,q, = prikey[11:-1].split(', ')
-    prikey = rsa.PrivateKey(n,e,d,p,q)
-    code = request.POST.get('code')
-    pin = request.POST.get('pin')
-    pin = base64.standard_b64decode(pin)
-    pin = rsa.decrypt(pin, prikey).decode('utf-8')
+        return http.HttpResponseNotAllowed('POST')
+    try:
+        code = request.POST.get('code')
+        pin = request.POST.get('pin')
+        pin = base64.standard_b64decode(pin)
+        pin = rsa.decrypt(pin, prikey).decode('utf-8')
+    except:
+        return http.HttpResponse('错误的加密')
+    if code.isdigit() != True or pin.isalnum() != True:
+        return http.HttpResponse('帐号不存在')
     values = {'code':code, 'pin':pin}
     requrl = 'http://202.117.24.14/patroninfo~S3*chx/1177297/items'
     cookie = cookiejar.CookieJar()
@@ -203,18 +208,27 @@ def librenew(request):
 
 
 def getpubkeys(request):
-    file = open('keys.txt','r+')
-    lasttime = file.readline()
+    global pubkey, prikey, lasttime,iffirsttime
     timenow = time.time()
-    if timenow - int(lasttime[0:-1]) >=1800:
-        file.close()
-        file = open('keys.txt','w')
+    if iffirsttime == 1:
+        file = open('keys.txt', 'w')
         pubkey, prikey = rsa.newkeys(512)
         lasttime = int(timenow)
         file.writelines(str(lasttime) + '\n' + str(pubkey) + '\n' + str(prikey))
         file.close()
+        iffirsttime = 0
     else:
-        pubkey = file.readline()
+        file = open('keys.txt','r+')
+        lasttime = file.readline()
+        if timenow - int(lasttime[0:-1]) >=1800:
+            file.close()
+            file = open('keys.txt','w')
+            pubkey, prikey = rsa.newkeys(512)
+            lasttime = int(timenow)
+            file.writelines(str(lasttime) + '\n' + str(pubkey) + '\n' + str(prikey))
+            file.close()
+        else:
+            file.close()
     print(pubkey)
     response = HttpResponse(pubkey)
     return response

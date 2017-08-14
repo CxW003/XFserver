@@ -3,6 +3,7 @@ import urllib.request
 import http.cookiejar
 import random
 import re
+import rsa
 
 
 def login(cookie,values,requrl):
@@ -91,3 +92,15 @@ def renew(cookie,values,requrl):
     html = html.decode('utf-8')
     return html,cookie
 
+
+def readkeys():
+    file = open('keys.txt', 'r')
+    file.readline()
+    pubkey = file.readline()
+    prikey = file.readline()
+    file.close()
+    n, e, d, p, q, = prikey[11:-1].split(', ')
+    prikey = rsa.PrivateKey(n, e, d, p, q)
+    n, e = pubkey[10:-1].split(', ')
+    pubkey = rsa.PublicKey(n, e)
+    return pubkey, prikey
